@@ -176,3 +176,37 @@ class Query(graphene.ObjectType):
 
     def resolve_orders(root, info):
         return Order.objects.all()
+
+import graphene
+from graphene_django import DjangoObjectType
+from .models import Product
+
+class ProductType(DjangoObjectType):
+    class Meta:
+        model = Product
+
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass  # No arguments needed
+
+    products = graphene.List(ProductType)
+    message = graphene.String()
+
+    def mutate(self, info):
+        # Get products with stock < 10
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        
+        # Update stock for each product
+        updated_products = []
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_products.append(product)
+        
+        return UpdateLowStockProducts(
+            products=updated_products,
+            message=f"Successfully updated {len(updated_products)} products"
+        )
+
+class Mutation(graphene.ObjectType):
+    update_low_stock_products = UpdateLowStockProducts.Field()
